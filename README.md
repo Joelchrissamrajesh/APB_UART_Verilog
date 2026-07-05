@@ -77,6 +77,18 @@ Test data used:8'h57
 
 Expected result: HOSTB receives 8'h57
 
+## Waveform Results
+
+### APB Register Configuration
+This waveform shows APB register configuration for UART setup, including LCR, IER/FCR, divisor register access, and APB control signals.
+
+![APB Register Configuration](docs/apb_register_configuration_waveform.png)
+
+### Host-B Received Data Readback
+This waveform shows Host-A transmitting data to Host-B through UART. Host-B receives the serial data on `rxd`, and APB read from address `0x00` returns `8'h57` on `prdata`.
+
+![Host-B Received Data Readback](docs/hostb_received_data_readback_waveform.png)
+
 ## Verification Scenarios
 
 APB register write and read
