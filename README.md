@@ -54,8 +54,6 @@ Receives serial data from rxd, synchronizes it, samples data bits, detects error
 
 ## Register Address Map
 
-## Register Address Map
-
 | Address | Register | Description |
 |---|---|---|
 | `0x00` | THR/RBR | Write transmit data / Read received data |
@@ -76,43 +74,50 @@ HOSTA.txd ---> HOSTB.rxd
 
 HOSTA is configured through APB writes and transmits data. HOSTB receives the serial data and stores it into its RX FIFO. The received data is read through APB read access.
 
-Test data used
+Test data used:
 
+```text
 8'h57
+```
 
-Expected result
+Expected result:
 
+```text
 HOSTB receives 8'h57
+```
 
 ## Waveform Results
 
 ### APB Register Configuration
+
 This waveform shows APB register configuration for UART setup, including LCR, IER/FCR, divisor register access, and APB control signals.
 
 ![APB Register Configuration](docs/apb_register_configuration_waveform.png)
 
 ### Host-B Received Data Readback
+
 This waveform shows Host-A transmitting data to Host-B through UART. Host-B receives the serial data on `rxd`, and APB read from address `0x00` returns `8'h57` on `prdata`.
 
 ![Host-B Received Data Readback](docs/hostb_received_data_readback_waveform.png)
 
 ## Verification Scenarios
 
-APB register write and read
-LCR register configuration
-Baud divisor configuration
-TX FIFO write operation
-UART serial transmission
-RX serial reception
-RX FIFO data storage
-Host-A to Host-B data transfer
-Received data readback through APB
+- APB register write and read
+- LCR register configuration
+- Baud divisor configuration
+- TX FIFO write operation
+- UART serial transmission
+- RX serial reception
+- RX FIFO data storage
+- Host-A to Host-B data transfer
+- Received data readback through APB
 
 ## Tools Used
-Verilog HDL
-QuestaSim / ModelSim
-Vivado Simulator
-Waveform Debug
+
+- Verilog HDL
+- QuestaSim / ModelSim
+- Vivado Simulator
+- Waveform Debug
 
 ## Resume Bullet
 
