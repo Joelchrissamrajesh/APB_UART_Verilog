@@ -57,14 +57,16 @@ Receives serial data from rxd, synchronizes it, samples data bits, detects error
 
 ## Register Address Map
 
-Address	  Register	      Description
-0x00	    THR/RBR	Write   transmit data / Read received data
-0x04	    IER	Interrupt   Enable Register
-0x08	    FCR/IIR	        FIFO Control / Interrupt Identification
-0x0C	    LCR	            Line Control Register
-0x14	    LSR	            Line Status Register
-0x1C	    Divisor LSB	    Baud-rate divisor lower byte
-0x20	    Divisor MSB	    Baud-rate divisor upper byte
+| Address | Register    | Description                              |
+| ------- | ----------- | ---------------------------------------- |
+| `0x00`  | THR/RBR     | Write transmit data / Read received data |
+| `0x04`  | IER         | Interrupt Enable Register                |
+| `0x08`  | FCR/IIR     | FIFO Control / Interrupt Identification  |
+| `0x0C`  | LCR         | Line Control Register                    |
+| `0x14`  | LSR         | Line Status Register                     |
+| `0x1C`  | Divisor LSB | Baud-rate divisor lower byte             |
+| `0x20`  | Divisor MSB | Baud-rate divisor upper byte             |
+
 
 ## Testbench
 
