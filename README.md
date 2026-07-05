@@ -23,36 +23,32 @@ The APB master configures UART registers through APB read/write transactions. Da
 
 ## Architecture
 
+```text``
 APB Master
     |
     | APB Read/Write
     |
 Register Block
     |
-    |---------------- TX FIFO ---> UART Transmitter ---> TXD
+    |------------------> TX FIFO ---> UART Transmitter ---> TXD
     |
-    |<--------------- RX FIFO <--- UART Receiver <------ RXD
+    |<------------------ RX FIFO <--- UART Receiver <------ RXD 
 
 ## Main Modules
 
 1. uart_top
-
 Top-level module that connects the register block, transmitter, and receiver.
 
 2. register_block
-
 Handles APB read/write transactions, register access, baud-rate divisor logic, interrupt generation, TX FIFO write enable, and RX FIFO read enable.
 
 3. transmitter
-
 Implements UART transmit operation using TX FIFO and FSM states such as IDLE, START, BIT0-BIT7, PARITY, STOP1, and STOP2.
 
 4. receiver_block
-
 Receives serial data from rxd, synchronizes it, samples data bits, detects errors, and pushes received data into RX FIFO.
 
 5. fifo_counter
-
 16-depth FIFO used for both TX and RX buffering.
 
 ## Register Address Map
