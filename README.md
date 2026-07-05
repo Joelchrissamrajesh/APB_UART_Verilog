@@ -54,28 +54,35 @@ Receives serial data from rxd, synchronizes it, samples data bits, detects error
 
 ## Register Address Map
 
-| Address | Register    | Description                              |
-| ------- | ----------- | ---------------------------------------- |
-| `0x00`  | THR/RBR     | Write transmit data / Read received data |
-| `0x04`  | IER         | Interrupt Enable Register                |
-| `0x08`  | FCR/IIR     | FIFO Control / Interrupt Identification  |
-| `0x0C`  | LCR         | Line Control Register                    |
-| `0x14`  | LSR         | Line Status Register                     |
-| `0x1C`  | Divisor LSB | Baud-rate divisor lower byte             |
-| `0x20`  | Divisor MSB | Baud-rate divisor upper byte             |
+## Register Address Map
 
+| Address | Register | Description |
+|---|---|---|
+| `0x00` | THR/RBR | Write transmit data / Read received data |
+| `0x04` | IER | Interrupt Enable Register |
+| `0x08` | FCR/IIR | FIFO Control / Interrupt Identification |
+| `0x0C` | LCR | Line Control Register |
+| `0x14` | LSR | Line Status Register |
+| `0x1C` | Divisor LSB | Baud-rate divisor lower byte |
+| `0x20` | Divisor MSB | Baud-rate divisor upper byte |
 
 ## Testbench
 
 The testbench instantiates two UART controllers:
 
-HOSTA.txd  --->  HOSTB.rxd
+```text
+HOSTA.txd ---> HOSTB.rxd
+```
 
 HOSTA is configured through APB writes and transmits data. HOSTB receives the serial data and stores it into its RX FIFO. The received data is read through APB read access.
 
-Test data used:8'h57
+Test data used
 
-Expected result: HOSTB receives 8'h57
+8'h57
+
+Expected result
+
+HOSTB receives 8'h57
 
 ## Waveform Results
 
@@ -100,7 +107,8 @@ RX serial reception
 RX FIFO data storage
 Host-A to Host-B data transfer
 Received data readback through APB
-Tools Used
+
+## Tools Used
 Verilog HDL
 QuestaSim / ModelSim
 Vivado Simulator
