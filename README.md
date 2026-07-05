@@ -33,6 +33,7 @@ Register Block
     |------------------> TX FIFO ---> UART Transmitter ---> TXD
     |
     |<------------------ RX FIFO <--- UART Receiver <------ RXD 
+```
 
 ## Main Modules
 
