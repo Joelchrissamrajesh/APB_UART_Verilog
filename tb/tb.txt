@@ -1,0 +1,258 @@
+module topmodule_tb();
+reg pclk_a;
+reg pclk_b;
+reg presetn_a;
+reg presetn_b;
+reg [7:0]paddr_a;
+reg [7:0]paddr_b;
+reg [7:0]pwdata_a;
+reg [7:0]pwdata_b;
+reg pwrite_a;
+reg pwrite_b;
+reg penable_a;
+reg penable_b;
+reg psel_a;
+wire [7:0]prdata_a;
+wire [7:0]prdata_b;
+wire irq_a;
+wire irq_b;
+wire pready_a;
+reg psel_b;
+wire pready_b;
+wire pslveer_a;
+wire pslveer_b;
+wire txd_a;
+
+
+uart_top HOSTA
+						(.pclk(pclk_a),
+						 .presetn(presetn_a),
+						 .paddr(paddr_a),
+						 .pwdata(pwdata_a),
+						 .pwrite(pwrite_a),
+						 .penable(penable_a),
+						 .psel(psel_a),
+						 .rxd(),
+						 .prdata(prdata_a),
+						 .irq(irq_a),
+						 .pready(pready_a),
+						 .pslveer(pslveer_a),
+						 .txd(txd_a)
+		        );
+
+uart_top HOSTB
+						(.pclk(pclk_b),
+						 .presetn(presetn_b),
+						 .paddr(paddr_b),
+						 .pwdata(pwdata_b),
+						 .pwrite(pwrite_b),
+						 .penable(penable_b),
+						 .psel(psel_b),
+						 .rxd(txd_a),
+						 .prdata(prdata_b),
+						 .irq(irq_b),
+						 .pready(pready_b),
+						 .pslveer(pslveer_b),
+						 .txd()
+		        );
+ initial pclk_a=1'b0;
+ always #45.21 pclk_a=~pclk_a;
+ initial pclk_b=1'b0;
+ always #33.91 pclk_b=~pclk_b;
+
+task reset_a;
+		begin
+			@(negedge pclk_a)
+					presetn_a=1'b1;
+			@(negedge pclk_a)
+					presetn_a=1'b0;
+		end
+endtask
+task reset_b;
+		begin
+			@(negedge pclk_b)
+				presetn_b=1'b1;
+			@(negedge pclk_b)
+				presetn_b=1'b0;
+		end
+endtask
+task initialize_a;
+		begin
+	{paddr_a,pwdata_a,pwrite_a,penable_a,psel_a}=0;
+		end
+endtask
+task initialize_b;
+		begin
+			{paddr_b,pwdata_b,pwrite_b,penable_b,psel_b}='d0;
+		end
+endtask
+
+task update_lcr_reg_a(input[7:0]a);
+		begin
+			@(negedge pclk_a)
+			psel_a=1'b1;
+			paddr_a=8'h0c;
+			pwrite_a=1'b1;
+			pwdata_a=a;
+			@(negedge pclk_a)
+				penable_a=1'b1;
+				wait(pready_a)
+					psel_a=1'b0;
+					penable_a=1'b0;
+		end
+endtask
+
+task update_lcr_reg_b(input[7:0]b);
+		begin
+			@(negedge pclk_b)
+			psel_b=1'b1;
+			paddr_b=8'h0c;
+			pwrite_b=1'b1;
+			pwdata_b=b;
+			@(negedge pclk_b)
+				penable_b=1'b1;
+				wait(pready_b)
+					psel_b=1'b0;
+					penable_b=1'b0;
+		end
+endtask
+
+task update_ier_reg_a(input[7:0]c);
+			begin
+				@(negedge pclk_a)
+					psel_a=1'b1;
+					paddr_a=8'h04;
+					pwrite_a=1'b1;
+					pwdata_a=c;
+					@(negedge pclk_a)
+						penable_a=1'b1;
+						wait(pready_a)
+							psel_a=1'b0;
+							penable_a=1'b0;
+					end
+	endtask
+
+task update_ier_reg_b(input[7:0]d);
+			begin
+				@(negedge pclk_b)
+					psel_b=1'b1;
+					paddr_b=8'h04;
+					pwrite_b=1'b1;
+					pwdata_b=d;
+					@(negedge pclk_b)
+						penable_b=1'b1;
+						wait(pready_b)
+							psel_b=1'b0;
+							penable_b=1'b0;
+					end
+	endtask
+
+
+task update_div_reg_a(input[7:0]e);
+			begin
+				@(negedge pclk_a)
+					psel_a=1'b1;
+					paddr_a=8'h1c ;
+					pwrite_a=1'b1;
+					pwdata_a=e;
+					@(negedge pclk_a)
+						penable_a=1'b1;
+						wait(pready_a)
+							psel_a=1'b0;
+							penable_a=1'b0;
+					end
+	endtask
+
+task update_div_reg_b(input[7:0]f);
+			begin
+				@(negedge pclk_b)
+					psel_b=1'b1;
+					paddr_b=8'h1c;
+					pwrite_b=1'b1;
+					pwdata_b=f;
+					@(negedge pclk_b)
+						penable_b=1'b1;
+						wait(pready_b)
+							psel_b=1'b0;
+							penable_b=1'b0;
+					end
+	endtask
+
+task update_fcr_reg_a(input[7:0]g);
+			begin
+				@(negedge pclk_a)
+					psel_a=1'b1;
+					paddr_a=8'h08;
+					pwrite_a=1'b1;
+					pwdata_a=g;
+					@(negedge pclk_a)
+						penable_a=1'b1;
+						wait(pready_a)
+							psel_a=1'b0;
+							penable_a=1'b0;
+					end
+	endtask
+
+task update_fcr_reg_b(input[7:0]h);
+			begin
+				@(negedge pclk_b)
+					psel_b=1'b1;
+					paddr_b=8'h08;
+					pwrite_b=1'b1;
+					pwdata_b=h;
+					@(negedge pclk_b)
+						penable_b=1'b1;
+						wait(pready_b)
+							psel_b=1'b0;
+							penable_b=1'b0;
+					end
+	endtask
+task send_data(input[7:0]i);
+			begin
+				@(negedge pclk_a)
+					psel_a=1'b1;
+					paddr_a=8'h00;
+					pwrite_a=1'b1;
+					pwdata_a=i;
+					@(negedge pclk_a)
+						penable_a=1'b1;
+						wait(pready_a)
+							psel_a=1'b0;
+							penable_a=1'b0;
+					end
+	endtask
+	task receive_data();
+				begin
+					wait(!HOSTB.rx_fifo_empty)
+						$display("UART DATA RECEIVED");
+							@(negedge pclk_b)
+							psel_b=1'b1;
+							paddr_b=8'h00;
+							pwrite_b=1'b0;
+							@(negedge pclk_b);
+							penable_b=1'b1;
+							wait(pready_b)
+								psel_b=1'b0;
+								penable_b=1'b0;
+								@(negedge pclk_b);
+						end
+				endtask
+
+	initial begin
+			initialize_a;
+			initialize_b;
+			reset_a;
+			reset_b;
+			update_lcr_reg_a(8'h0b); 
+			update_lcr_reg_b(8'h0b);
+			update_ier_reg_a(8'h00);
+			update_ier_reg_b(8'h00);
+			update_fcr_reg_a(8'h00);
+			update_fcr_reg_b(8'h00);
+			update_div_reg_a(8'h06);
+			update_div_reg_b(8'h08);
+			send_data(8'h57);
+			receive_data;
+			#30000;
+		end
+	endmodule

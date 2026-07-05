@@ -1,0 +1,303 @@
+module transmitter
+	(
+		input pclk,
+	  input presetn,
+		input [7:0]pwdata,
+		input tx_fifo_push,
+		input enable,
+		input [7:0]lcr,
+		output[4:0] tx_fifo_count,
+		output busy,
+		output tx_fifo_empty,
+		output tx_fifo_full,
+		output txd
+	);
+	//reg_and_wire_declaration//
+		reg [3:0]tx_state,next_state;
+		reg [3:0]bit_counter;
+		reg [7:0]tx_buffer;
+		wire [7:0]tx_fifo_out;
+		wire tx_fifo_pop;
+		reg txd_temp;
+	//state_definitions//
+		localparam IDLE  =4'b0000,
+							 START =4'b0001,
+							 BIT0  =4'b0010,
+							 BIT1	 =4'b0011,
+							 BIT2	 =4'b0100,
+							 BIT3	 =4'b0101,
+							 BIT4	 =4'b0110,
+							 BIT5	 =4'b0111,
+							 BIT6	 =4'b1000,
+							 BIT7	 =4'b1001,
+							PARITY =4'b1010,
+							STOP1  =4'b1011,
+							STOP2  =4'b1100;
+	//fifo_counter_instantation//
+		fifo_counter DUT
+									(
+										.clk(pclk),
+										.reset(presetn),
+										.data_in(pwdata),
+										.push(tx_fifo_push),
+										.pop(tx_fifo_pop),
+										.fifo_empty(tx_fifo_empty),
+										.fifo_full(tx_fifo_full),
+										.count(tx_fifo_count),
+										.data_out(tx_fifo_out)
+									);
+	//state_logic//
+		always@(posedge pclk)
+			begin
+				if(presetn)
+				tx_state<=IDLE;
+				else
+					tx_state<=next_state;
+			end
+	//loading_data_to_buffer//
+	   always@(posedge pclk)
+			begin
+				if(presetn)
+					tx_buffer<=8'd0;
+				else if(tx_state==IDLE)
+					tx_buffer<=tx_fifo_out;
+					else 
+					tx_buffer<=tx_buffer;
+			end
+	//next_state_logic//
+		always@(*)
+			begin
+				  next_state = tx_state;   // default: stay in current state
+              txd_temp = 1'b1;         // default idle value
+			case(tx_state)
+					IDLE :begin
+									txd_temp=1'b1;
+								 	if(tx_fifo_empty==1'b0 && enable)
+										begin
+											next_state=START;
+										end
+								else
+										begin
+									  	next_state=IDLE;
+					         	end
+								end
+
+				  START :begin
+									txd_temp=1'b0;
+								
+								  	if(bit_counter==4'hf&&enable)
+											 begin
+											 	 next_state=BIT0;
+											  end
+								  	else if(enable)
+										  	begin
+													 next_state=START;
+										   	end
+								  	else
+											next_state=START;
+									end
+						
+				  BIT0 :begin
+									txd_temp=tx_buffer[0];
+								  	if(bit_counter==4'hf&&enable)
+											 begin
+											 	 next_state=BIT1;
+											  end
+								  	else if(enable)
+										  	begin
+													 next_state=BIT0;
+										   	end
+								  	else
+											next_state=BIT0;
+									end
+						
+				  BIT1 :begin
+									txd_temp=tx_buffer[1];
+								  	if(bit_counter==4'hf&&enable)
+											 begin
+											 	 next_state=BIT2;
+											  end
+								  	else if(enable)
+										  	begin
+													 next_state=BIT1;
+										   	end
+								  	else
+											next_state=BIT1;
+									end
+						
+				  BIT2 :begin
+
+									txd_temp=tx_buffer[2];
+								  	if(bit_counter==4'hf&&enable)
+											 begin
+											 	 next_state=BIT3;
+											  end
+								  	else if(enable)
+										  	begin
+													 next_state=BIT2;
+										   	end
+								  	else
+											next_state=BIT2;
+									end
+						
+				  BIT3 :begin
+
+									txd_temp=tx_buffer[3];
+								  	if(bit_counter==4'hf&&enable)
+											 begin
+											 	 next_state=BIT4;
+											  end
+								  	else if(enable)
+										  	begin
+													 next_state=BIT3;
+										   	end
+								  	else
+											next_state=BIT3;
+									end
+						
+					BIT4 :begin
+									txd_temp=tx_buffer[4];
+									if(bit_counter==4'hf&&enable&&lcr[1:0]>2'b00)
+										begin
+											next_state=BIT5;
+										end
+									else if(bit_counter==4'hf&&enable&&lcr[1:0]==2'b00&&lcr[3]==1'b0)
+											begin
+												next_state=STOP1;
+											end
+									else if(bit_counter==4'hf&&enable&&lcr[1:0]==2'b00&&lcr[3]==1'b1)
+												begin
+													next_state=PARITY;
+												end
+									else if(enable)
+											begin
+												next_state=BIT4;
+											end
+									else
+											next_state=BIT4;
+							end
+					BIT5 : begin
+
+									txd_temp=tx_buffer[5];
+									if(bit_counter==4'hf&&enable&&lcr[1:0]>2'b01)
+											begin
+												next_state=BIT6;
+											end
+									else if(bit_counter==4'hf&&enable&&lcr[1:0]<2'b01&&lcr[3]==1'b0)
+												begin
+													next_state=STOP1;
+												end
+									else if(bit_counter==4'hf&&enable&&lcr[1:0]==2'b01&&lcr[3]==1'b1)
+												begin
+													next_state=PARITY;
+												end
+									else if(enable)
+												begin
+													next_state=BIT5;
+												end
+									else
+												next_state=BIT5;
+								end
+
+					BIT6 : begin
+									txd_temp=tx_buffer[6];
+									if(bit_counter==4'hf&&enable&&lcr[1:0]==2'b11)
+										begin
+											next_state=BIT7;
+										end
+									else if(bit_counter==4'hf&&enable&&lcr[1:0]!=2'b11&&lcr[3]==1'b0)
+												begin
+											   	next_state=STOP1;
+							        	end
+									else if(bit_counter==4'hf&&enable&&lcr[3]==1'b1)
+									       begin
+														next_state=PARITY;
+													end
+									else
+												begin
+											  	next_state=BIT6;
+												end
+									end
+					BIT7 :begin
+
+									txd_temp=tx_buffer[7];
+									if(bit_counter==4'hf&&enable&&lcr[3]==1'b1)
+											begin
+												next_state=PARITY;
+											end
+									else if(bit_counter==4'hf && enable && lcr[3]==1'b0)
+												begin
+													next_state=STOP1;
+												end
+										else
+											begin
+												next_state=BIT7;
+											end
+							  end
+								
+				PARITY :begin
+								case(lcr[5:3])
+												3'b001:txd_temp=(^tx_buffer);
+												3'b011:txd_temp=(~^tx_buffer);
+												3'b101:txd_temp=1'b1;
+												3'b111:txd_temp=1'b0;
+												default:txd_temp=1'b0;
+								endcase
+									if(bit_counter==4'hf&&enable&&lcr[3]==1'b0)
+									begin
+											next_state=STOP2;
+										end
+									else if(bit_counter==4'hf&&enable)
+											begin
+												next_state=STOP1;
+											end
+									else
+											begin
+												next_state=PARITY;
+											end
+                 end
+
+				STOP1:begin
+
+									txd_temp=1'b1;
+								if(bit_counter==4'hf&&enable&&lcr[2]==1'b0)
+											begin
+												next_state=IDLE;
+											end
+									else if(bit_counter==4'hf&&enable&&lcr[2]==1'b1)
+												begin
+													next_state=STOP2;
+												end
+									else
+											begin
+												next_state=STOP1;
+											end
+							end
+			STOP2:begin
+							
+									txd_temp=1'b1;
+							if(!tx_fifo_empty&&enable)
+								begin
+									next_state=IDLE;
+								end
+							else
+								next_state=STOP2;
+						end
+	default:next_state=IDLE;
+	endcase
+	end
+	always@(posedge pclk)
+				begin
+					if(presetn)
+							bit_counter<=4'd0;
+					else if(enable)
+								bit_counter<=bit_counter+4'd1;
+					else if(bit_counter==4'hf&&enable)
+								bit_counter<=4'd0;
+					else
+					bit_counter<=bit_counter;
+        end
+	assign busy=(tx_state==IDLE)?1'b0:1'b1;
+	assign txd=(lcr[6])?1'b0:txd_temp;
+	assign tx_fifo_pop=(tx_state==IDLE&&!tx_fifo_empty&&enable)?1'b1:1'b0;
+	endmodule	

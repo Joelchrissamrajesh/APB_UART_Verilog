@@ -1,0 +1,319 @@
+module register_block
+	(
+		input       pclk,
+		input       presetn,
+		input       psel,
+		input       pwrite,
+		input [7:0] pwdata,
+		input       penable,
+		input [7:0] paddr,
+		input       tx_fifo_empty,
+		input       tx_fifo_full,
+		input       tx_busy,
+		input  [7:0]rx_data_out,
+		input 			rx_overrun,
+		input       parity_error,
+		input       framing_error,
+		input       break_error,
+		input       time_out,
+		input       rx_fifo_empty,
+		input       rx_fifo_full,
+		input  [4:0]rx_fifo_count,
+
+  	output reg [7:0]prdata,
+  	output  reg pready,
+	  output	reg	pslverr,
+  	output reg[7:0]lcr,
+	  output  reg  tx_fifo_we,
+    output	reg tx_enable,
+		output  reg  rx_enable,
+		output  reg rx_fifo_re,
+		output  reg loopback,
+		output     reg irq
+	);
+
+	//-----------------------------apb_master_signals-------------------------//	
+	 	reg we;
+		reg re;
+		reg [1:0]state,next_state;		
+       	localparam IDLE=2'b00,
+		     SETUP=2'b01,
+		     ACESS=2'b10;
+ 		always@(posedge pclk)
+				begin
+					if(presetn)
+						state<=IDLE;
+					else
+						state<=next_state;
+				end
+		always@(*)
+			begin
+				we=1'b0;
+				re=1'b0;
+				pready=1'b0;
+		case(state)
+						IDLE :begin
+										if(psel==1'b1&&penable==1'b0)
+											next_state=SETUP;
+										else
+											next_state=IDLE;
+									end
+						SETUP :begin
+										if(psel==1'b1&&penable==1'b1)
+												next_state=ACESS;
+										else
+												next_state=SETUP;
+										end
+						ACESS:begin
+										we=(pwrite);
+										re=(!pwrite);
+										pready=1'b1;
+								  	next_state=IDLE;
+							  	end
+						default:next_state=IDLE;
+		endcase
+	end
+	
+	
+
+	//--------------------lcr_register_block-------------------------//
+		always@(posedge pclk)
+			begin
+				if(presetn)
+						lcr<=8'd0;
+				else if(we==1'b1&&paddr==8'h0c)
+						lcr<=pwdata;
+				else
+						lcr<=lcr;
+			end
+	
+	
+	//------------------fcr_register---------------------------------//
+		reg [7:0]fcr;
+			always@(posedge pclk)
+				begin
+					if(presetn)
+						fcr<=8'd0;
+					else if(we==1'b1&&paddr==8'h08)
+						fcr<=pwdata;
+					else
+						fcr<=fcr;
+				end
+	
+		
+	//-------------------------lsr_register--------------------------//
+		reg[7:0]lsr;
+			always@(posedge pclk)
+				begin
+					if(presetn)
+							lsr<=8'd0;
+					else if(re==1'b1&&paddr==8'h14)
+						lsr<=8'd0;
+					else if(re==1'b1)
+						lsr<={(parity_error|framing_error|break_error),(tx_fifo_empty&tx_busy),tx_fifo_empty,break_error,framing_error,parity_error,rx_overrun,!rx_fifo_empty};
+					else
+						lsr<=lsr;
+				end
+	
+			
+	//------------------------ier_register----------------------------//
+		reg[3:0]ier;
+		always@(posedge pclk)
+			begin
+				if(presetn)
+						ier<=4'd0;
+				else if(we==1'b1&&paddr==8'h04)
+						ier<=pwdata[3:0];
+				else
+						ier<=ier;
+			end
+
+			
+	//--------------------rx_fifo_re-----------------------------------------//
+			always@(posedge pclk)
+				begin
+					if(presetn)
+							rx_fifo_re<=1'b0;
+					else if(rx_fifo_re)
+								rx_fifo_re<=1'b0;
+				else if(re==1'b1&&paddr==5'h0)
+								rx_fifo_re<=1'b1;
+				else
+							rx_fifo_re<=rx_fifo_re;
+			end
+	
+	
+	//-------------------------------tx_fifo_we-----------------------------//
+		always@(posedge pclk)
+			begin
+				if(presetn)
+					tx_fifo_we<=1'b0;
+				else if(we==1'b1&&paddr==5'h0)
+					tx_fifo_we<=1'b1;
+				else
+					tx_fifo_we<=1'b0;
+			end
+	
+	
+	//---------------------------last_tx_fifo_empty------------------------//
+		reg last_tx_fifo_empty;
+		always@(posedge pclk)
+			begin
+				if(presetn)
+						last_tx_fifo_empty<=1'b0;
+				else
+						last_tx_fifo_empty<=tx_fifo_empty;
+			end
+		
+	//--------------------ls_int---------------------------------------------//
+			reg ls_int; 
+	always@(posedge pclk)
+		begin
+			if(presetn)
+				ls_int<=1'b0;
+			else if(re==1'b1&&paddr==8'h14)
+				ls_int<=1'b0;
+			else if(re==1'b1)
+					ls_int<=|{break_error,framing_error,parity_error,rx_overrun};
+	else
+			ls_int<=|({lsr[4:1]});
+		end
+	//------------------tx_int-----------------------------------//
+			reg tx_int;
+		always@(posedge pclk)
+			begin
+				if(presetn)
+					tx_int<=1'b0;
+			else if(re==1'b1&&paddr==8'h08&&prdata[3:0]==4'd2)
+					tx_int<=1'b0;
+			else 
+					tx_int<=(tx_fifo_empty&~(last_tx_fifo_empty)|tx_int);
+			end
+	
+
+	//-------------------rx_int--------------------------------//
+		reg rx_fifo_over_threshold;
+		reg rx_int;
+		always@(posedge pclk)
+				begin
+					if(presetn)
+						rx_int<=1'b0;
+					else
+						rx_int<=rx_fifo_over_threshold;
+				end
+	
+		
+	//------------------irq------------------------------------//
+		
+		always@(posedge pclk)
+			begin
+				if(presetn)
+						irq<=1'b0;
+				else if(re==1'b1&&paddr==8'h02)
+						irq<=1'b0;
+				else 
+					irq<=((ier[0]&rx_int)|(ier[1]|tx_int)|(ier[2]&ls_int)|time_out);
+	end
+	
+	
+	//------------------------baud_rate_generator----------------//
+		reg enable;
+		parameter div1=8'h1c,
+							div2=8'h20;
+
+		reg [15:0]dlc;
+		reg start_dlc;
+		reg [15:0]divisor;
+	always@(posedge pclk)
+			begin
+				if(presetn)
+					dlc<=16'd0;
+			else if((~|divisor)||start_dlc||~|dlc)
+						dlc<=divisor-1'b1;
+	  	else
+			      dlc<=dlc-1'b1;	
+		end
+	always@(posedge pclk)
+			begin
+				if(presetn)
+					start_dlc<=1'b0;
+				else if(paddr==div1&&we)
+						start_dlc<=1'b1;
+				else
+						start_dlc<=1'b0;
+			end
+	always@(posedge pclk)
+			begin
+				if(presetn)
+						divisor<=16'd0;
+				else if(we)
+					begin
+						case(paddr)
+								div1:divisor[7:0]<=pwdata;
+								div2:divisor[15:8]<=pwdata;
+						endcase
+						end
+			end
+	always@(posedge pclk)
+		begin
+			if(presetn)
+					enable<=1'b0;
+			else if((|divisor)&&(~|dlc))
+					enable<=1'b1;
+			else
+			begin
+					enable<=1'b0;
+			end
+				rx_enable<=enable;
+				tx_enable<=enable;
+		end
+	
+				
+	//------rx_fif0_threshold----------------------------//
+		always@(*)
+			begin
+					rx_fifo_over_threshold=1'b0;
+				case({fcr[7],fcr[6]})
+					2'b00:rx_fifo_over_threshold=(rx_fifo_count>=5'd1)?1'b1:1'b0;
+					2'b01:rx_fifo_over_threshold=(rx_fifo_count>=5'd4)?1'b1:1'b0;
+					2'b10:rx_fifo_over_threshold=(rx_fifo_count>=5'd8)?1'b1:1'b0;
+					2'b11:rx_fifo_over_threshold=(rx_fifo_count>=5'd14)?1'b1:1'b0;
+				default:rx_fifo_over_threshold=1'b0;
+       endcase
+			end
+
+	
+//-------------------------iir_register----------------------------------//
+		reg [7:0]iir;
+	always@(posedge pclk)
+		begin
+			if(presetn)
+					iir<=8'd0;
+			else if(ls_int&&ier[2])
+					iir<=4'h6;
+			else if(rx_int&&ier[0])
+					iir<=4'h4;
+			else if(tx_int&&ier[1])
+					iir<=4'h2;
+			else
+					iir<=4'h1;
+		end
+//-----------------pr_data--------------------------------------------//
+	
+	always@(*)
+		begin
+		pslverr=1'b0;
+		prdata=8'b0;
+		case(paddr)
+				5'h0:prdata=rx_data_out;
+				5'h4:prdata={4'b0,ier};
+				5'h8:prdata={4'h0,iir};
+				5'hc:prdata=lcr;
+				5'h10:prdata={3'h0,5'b00};
+				5'h14:prdata=lsr;
+				5'h1c:prdata=divisor[7:0];
+				5'h20:prdata=divisor[15:8];
+				default:pslverr=1'b1;
+			endcase
+		end
+endmodule
